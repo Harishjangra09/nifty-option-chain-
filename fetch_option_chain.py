@@ -1,6 +1,6 @@
 import os
 import pandas as pd
-from fyers_apiv3.fyersModel import fyersModel
+from fyers_apiv3.fyersModel import FyersModel
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -8,7 +8,7 @@ load_dotenv()
 ACCESS_TOKEN = os.getenv("FYERS_ACCESS_TOKEN")
 CLIENT_ID = os.getenv("FYERS_CLIENT_ID")
 
-fyers = fyersModel.FyersModel(client_id=CLIENT_ID, token=ACCESS_TOKEN, log_path="")
+fyers = FyersModel(client_id=FYERS_CLIENT_ID, token=FYERS_ACCESS_TOKEN, log_path="")
 
 
 # === Generate NIFTY Option Symbols ===
