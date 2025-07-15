@@ -1,15 +1,15 @@
 import os
 import pandas as pd
-from fyers_apiv3.fyersModel import FyersModel
+from fyers_apiv3.fyersModel import FyersModel  # ✅ Correct import
 from dotenv import load_dotenv
 
+# === Load environment variables ===
 load_dotenv()
-
 ACCESS_TOKEN = os.getenv("FYERS_ACCESS_TOKEN")
 CLIENT_ID = os.getenv("FYERS_CLIENT_ID")
 
+# === Initialize Fyers client ===
 fyers = FyersModel(client_id=CLIENT_ID, token=ACCESS_TOKEN, log_path="")
-
 
 # === Generate NIFTY Option Symbols ===
 def generate_symbols(expiry="24J18", strikes=range(17800, 18201, 100), base="NSE:NIFTY"):
@@ -24,11 +24,15 @@ def fetch_quotes(symbols):
     all_data = []
     for i in range(0, len(symbols), 10):
         batch = symbols[i:i + 10]
-        res = fyers.quotes({"symbols": ",".join(batch)})
-        if res["s"] == "ok":
-            all_data.extend(res["d"])
+        try:
+            res = fyers.quotes({"symbols": ",".join(batch)})  # ✅ Fixed syntax
+            if res["s"] == "ok":
+                all_data.extend(res["d"])
+            else:
+                print("⚠️ API error:", res)
+        except Exception as e:
+            print(f"❌ Error fetching batch: {e}")
     return all_data
-
 
 # === Build option chain table ===
 def build_table(data):
@@ -59,38 +63,46 @@ def build_table(data):
             }
             rows.append(row)
         except Exception as e:
-            print(f"Error parsing item: {item}, error: {e}")
+            print(f"⚠️ Error parsing item: {item}, error: {e}")
     return rows
 
-# === Main ===
+# === Main Execution ===
 def main():
-    expiry = "24J18"  # Change this to next expiry
+    expiry = "24J18"  # Update this manually if needed
     strikes = range(17800, 18201, 100)
-    symbols = generate_symbols(expiry, strikes)
 
+    symbols = generate_symbols(expiry, strikes)
+    print("🔄 Fetching option chain for:", expiry)
+    
     data = fetch_quotes(symbols)
     table = build_table(data)
 
     df = pd.DataFrame(table)
 
-    # Pivot table to merge CE/PE by strike
-    df_pivot = pd.pivot_table(
-        df,
-        index="Strike",
-        columns="Type",
-        values=[
-            "Symbol", "LTP", "Qty", "Chg", "%Chg", "Volume", "OI",
-            "Contracts", "OI Chg", "%OI Chg", "IV", "Prev OI CE", "Prev OI PE"
-        ],
-        aggfunc="first"
-    )
-    df_pivot.columns = [f"{col[1]}_{col[0]}" for col in df_pivot.columns]
-    df_pivot = df_pivot.reset_index()
+    # Debug info
+    print("✅ Columns:", df.columns.tolist())
+    print("📊 Total rows:", len(df))
 
-    # Save to Excel
-    file_name = "NIFTY_Option_Chain.xlsx"
-    df_pivot.to_excel(file_name, index=False)
-    print(f"✅ Saved to: {file_name}")
+    # Create pivot only if valid data exists
+    if not df.empty and "Symbol" in df.columns:
+        df_pivot = pd.pivot_table(
+            df,
+            index="Strike",
+            columns="Type",
+            values=[
+                "Symbol", "LTP", "Qty", "Chg", "%Chg", "Volume", "OI",
+                "Contracts", "OI Chg", "%OI Chg", "IV", "Prev OI CE", "Prev OI PE"
+            ],
+            aggfunc="first"
+        )
+        df_pivot.columns = [f"{col[1]}_{col[0]}" for col in df_pivot.columns]
+        df_pivot = df_pivot.reset_index()
+
+        file_name = "NIFTY_Option_Chain.xlsx"
+        df_pivot.to_excel(file_name, index=False)
+        print(f"✅ Saved to: {file_name}")
+    else:
+        print("⚠️ No valid option chain data retrieved. Nothing saved.")
 
 if __name__ == "__main__":
     main()
