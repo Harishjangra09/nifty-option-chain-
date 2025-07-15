@@ -1,15 +1,15 @@
 import os
 import pandas as pd
-from fyers_apiv3.fyersModel import FyersModel
+from fyers_apiv3.fyersModel import fyersModel
 from dotenv import load_dotenv
 
-# === Load env variables ===
 load_dotenv()
+
 ACCESS_TOKEN = os.getenv("FYERS_ACCESS_TOKEN")
 CLIENT_ID = os.getenv("FYERS_CLIENT_ID")
 
-# === Init Fyers ===
-fyers = FyersModel.FyersModel(client_id=CLIENT_ID, token=ACCESS_TOKEN, log_path="")
+fyers = fyersModel.FyersModel(client_id=CLIENT_ID, token=ACCESS_TOKEN, log_path="")
+
 
 # === Generate NIFTY Option Symbols ===
 def generate_symbols(expiry="24J18", strikes=range(17800, 18201, 100), base="NSE:NIFTY"):
