@@ -9,7 +9,7 @@ ACCESS_TOKEN = os.getenv("FYERS_ACCESS_TOKEN")
 CLIENT_ID = os.getenv("FYERS_CLIENT_ID")
 
 # === Initialize Fyers client ===
-fyers = FyersModel(client_id=CLIENT_ID, token=ACCESS_TOKEN, log_path="")
+fyers = FyersModel(client_id=FYERS_CLIENT_ID, token=FYERS_ACCESS_TOKEN, log_path="")
 
 # === Generate NIFTY Option Symbols ===
 def generate_symbols(expiry="24J18", strikes=range(17800, 18201, 100), base="NSE:NIFTY"):
