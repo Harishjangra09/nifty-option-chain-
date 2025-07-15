@@ -1,67 +1,50 @@
 from flask import Flask, jsonify
 import os
-import pandas as pd
 from dotenv import load_dotenv
 from fyers_apiv3.fyersModel import FyersModel
 
-# === Load credentials ===
+# === Load ENV variables ===
 load_dotenv()
 FYERS_ACCESS_TOKEN = os.getenv("FYERS_ACCESS_TOKEN")
 FYERS_CLIENT_ID = os.getenv("FYERS_CLIENT_ID")
+
+# === Fyers client ===
 fyers = FyersModel(client_id=FYERS_CLIENT_ID, token=FYERS_ACCESS_TOKEN, log_path="")
 
 app = Flask(__name__)
 
-# === Convert expiry from '24J18' → '241807' ===
-def convert_expiry(input_expiry):
-    month_map = {"F": "02", "M": "03", "A": "04", "M2": "05", "J": "06", "J2": "07", "A2": "08", "S": "09", "O": "10", "N": "11", "D": "12"}
-    letter = input_expiry[2]
-    day = input_expiry[3:]
-    month = "07"  # Default to July for 'J'
-    if letter.upper() == "J":
-        month = "07"
-    return f"{input_expiry[:2]}{month}{day}"
-
-# === Generate Fyers symbols ===
+# === Generate Option Symbols ===
 def generate_symbols(expiry="24J18", strikes=range(17800, 18201, 100), base="NSE:NIFTY"):
-    final_expiry = convert_expiry(expiry)
-    ce = [f"{base}{final_expiry}{strike}CE" for strike in strikes]
-    pe = [f"{base}{final_expiry}{strike}PE" for strike in strikes]
+    ce = [f"{base}{expiry}{strike}CE" for strike in strikes]
+    pe = [f"{base}{expiry}{strike}PE" for strike in strikes]
     return ce + pe
 
-# === Fetch Fyers quotes ===
+# === Fetch Quotes ===
 def fetch_quotes(symbols):
     all_data = []
-    for i in range(0, len(symbols), 10):
-        batch = symbols[i:i + 10]
+    for i in range(0, len(symbols), 10):  # Fyers allows max 10 symbols per call
+        batch = symbols[i:i+10]
         try:
             res = fyers.quotes({"symbols": ",".join(batch)})
             if res.get("s") == "ok":
                 all_data.extend(res["d"])
+            else:
+                print(f"⚠️ API returned error: {res}")
         except Exception as e:
-            print(f"❌ Error fetching batch: {e}")
+            print(f"❌ Exception in batch fetch: {e}")
     return all_data
 
-# === Format response table ===
+# === Format Data ===
 def build_table(data):
     rows = []
     for item in data:
         v = item.get("v", {})
         name = item.get("n", "")
-        strike = v.get("strikePrice")
-
-        if strike is None:
-            # Extract from symbol if missing
-            try:
-                strike = int(''.join(filter(str.isdigit, name)))
-            except:
-                strike = None
-
+        strike = v.get("strikePrice", None)
         option_type = "CE" if "CE" in name else "PE"
-
         row = {
-            "Symbol": name,
             "Strike": strike,
+            "Symbol": name,
             "Type": option_type,
             "LTP": v.get("lp", ""),
             "Qty": v.get("qty", ""),
@@ -78,20 +61,20 @@ def build_table(data):
         rows.append(row)
     return rows
 
-# === Routes ===
+# === API Routes ===
 @app.route("/")
 def home():
     return "🟢 NIFTY Option Chain API is live!"
 
 @app.route("/optionchain")
 def option_chain():
-    expiry = "24J18"  # You can update later to accept via query param
-    strikes = range(17800, 18201, 100)
-
+    expiry = "24J18"  # ✅ Update this weekly
+    strikes = range(17800, 18201, 100)  # 🔄 You can customize strike range
     symbols = generate_symbols(expiry, strikes)
     data = fetch_quotes(symbols)
     table = build_table(data)
     return jsonify(table)
 
+# === Run ===
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8080)
