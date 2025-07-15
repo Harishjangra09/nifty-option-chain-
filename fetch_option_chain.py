@@ -24,10 +24,11 @@ def fetch_quotes(symbols):
     all_data = []
     for i in range(0, len(symbols), 10):
         batch = symbols[i:i + 10]
-        res = fyers.quotes(symbols=batch)
+        res = fyers.quotes({"symbols": ",".join(batch)})
         if res["s"] == "ok":
             all_data.extend(res["d"])
     return all_data
+
 
 # === Build option chain table ===
 def build_table(data):
